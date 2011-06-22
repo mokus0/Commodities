@@ -1,0 +1,29 @@
+name: CommoditiesMarket
+main: net.deepbondi.minecraft.market.CommoditiesMarket
+version: 0.1
+website: /dev/null
+author: mokus@deepbondi.net
+database: true
+description: Simple commodities market for iConomy
+commands:
+  commodities:
+    aliases: [cm]
+    description: Administrative interface for configuring commodities
+    usage: |
+           /<command>: no help yet
+  pricecheck:
+    aliases: [pc]
+    description: Gets info about available stock and going rate for an item
+    usage: |
+           /<command> <item> [qty]
+           Example: /<command> LimeWool 20
+  buy:
+    description: Buy an item
+    usage: |
+           /<command> <item> [qty]
+           Example: /<command> LimeWool 20
+  sell:
+    description: Sell an item
+    usage: |
+           /<command> <item> [qty]
+           Example: /<command> LimeWool 20

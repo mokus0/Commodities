@@ -1,0 +1,22 @@
+the plan...
+
+A commodities market for minecrack.  No special support for speculation, futures, etc., just buying and selling from a real global store of resources.  If someone didn't put it there, it can't be bought.  Prices are set as a function of supply and demand (via a pluggable "model" interface - admins can choose the model and tune any parameters it exposes).
+
+Should export a simple API exposing all market data.  Additional dependent plugin(s) I plan on:
+    - mining stimulus program: 1:N matching of all block drops (excluding drops from the last M blocks placed, where M is around 10k) deposited directly into the market, and some multiple of its value is deposited in the player's iConomy account.  Serves 2 purposes:  reduces need for society as a whole to "grind", and rewards those that actually do.
+
+
+The design of the core plugin:
+    Major components:
+        - market data store: 
+            Simple key-value mapping from item IDs to quantities and a standard, simple API for viewing them (but not editing; that must be done through transactions).
+        - transaction manager:
+            Standalone plugin implementing a transaction system.  Transactions are proposed by any plugin and must be approved by all transaction listeners.
+            "accounts" are identified by a 2-level namespace; plugin tag + account name.
+            Each transaction is described by:
+                timestamp, [(account, qty change)], plugin tag, transaction description
+            Transaction expiration would be configurable.  Probably support keep-last-N-days and keep-last-N-transactions modes.
+            Standard API for attempting transactions: client code creates and submits a transaction and is notified whether the transaction succeeded (which happens iff all TransactionListeners approve of the transaction.
+        - price modeling system:
+            fairly simple Java interface for models.  Models are given access to the market API and must provide a list of input parameters (and their default values), a list of output values, a list of primitive sources and model outputs they are derived from, and a hook to update their outputs.
+            the engine then manages updating by simple rules:  Whenever a primitive data source changes, all direct dependents are recomputed.  All their dependents are updated and so on.  Before any model is accepted by the engine, all its dependencies must already be there (so the dependency graph is acyclic by construction).
