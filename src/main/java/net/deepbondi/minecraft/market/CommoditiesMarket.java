@@ -7,6 +7,8 @@ import com.nijikokun.bukkit.Permissions.Permissions;
 import com.nijiko.permissions.PermissionHandler;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import javax.persistence.PersistenceException;
 import net.deepbondi.minecraft.market.commands.*;
 import org.bukkit.command.CommandSender;
@@ -250,6 +252,60 @@ public class CommoditiesMarket extends JavaPlugin {
             db.commitTransaction();
             
             return true;
+        } finally {
+            db.endTransaction();
+        }
+    }
+    
+    private static final Set<String> pcsUpdateProps;
+    static {
+        pcsUpdateProps = new HashSet<String>();
+        pcsUpdateProps.add("numBought");
+        pcsUpdateProps.add("numSold");
+        pcsUpdateProps.add("moneySpent");
+        pcsUpdateProps.add("moneyGained");
+    }
+
+    synchronized
+    public void recordPlayerCommodityStats(
+            Player player,
+            Commodity item,
+            long numBought,
+            long numSold,
+            double moneySpent,
+            double moneyGained)
+    {
+        EbeanServer db = getDatabase();
+        
+        db.beginTransaction();
+        
+        try {
+            PlayerCommodityStats existing = db
+                .find(PlayerCommodityStats.class)
+                .where()
+                .ieq("playerName", player.getName())
+                .eq("commodityId", item.getId())
+                .findUnique();
+            
+            if (existing == null) {
+                PlayerCommodityStats stats = new PlayerCommodityStats();
+                stats.setPlayerName(player.getName());
+                stats.setCommodityId(item.getId());
+                stats.setNumBought(numBought);
+                stats.setNumSold(numSold);
+                stats.setMoneySpent(moneySpent);
+                stats.setMoneyGained(moneyGained);
+                db.save(stats);
+            } else {
+                existing.setNumBought  (existing.getNumBought()   + numBought);
+                existing.setNumSold    (existing.getNumSold()     + numSold);
+                existing.setMoneySpent (existing.getMoneySpent()  + moneySpent);
+                existing.setMoneyGained(existing.getMoneyGained() + moneyGained);
+                
+                db.update(existing, pcsUpdateProps);
+            }
+            
+            db.commitTransaction();
         } finally {
             db.endTransaction();
         }

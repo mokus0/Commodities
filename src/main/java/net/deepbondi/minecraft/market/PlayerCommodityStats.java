@@ -25,23 +25,62 @@ public class PlayerCommodityStats {
     public int getId() {
         return id;
     }
+    public void setId(int id) {
+        this.id = id;
+    }
     
     @NotEmpty
     private String playerName;
+    public String getPlayerName() {
+        return playerName;
+    }
+    public void setPlayerName(String playerName) {
+        this.playerName = playerName;
+    }
     
     @NotNull
     private int commodityId;
+    public int getCommodityId() {
+        return commodityId;
+    }
+    public void setCommodityId(int commodityId) {
+        this.commodityId = commodityId;
+    }
     
     @NotNull
-    private int numBought;
+    private long numBought;
+    public long getNumBought() {
+        return numBought;
+    }
+    public void setNumBought(long numBought) {
+        this.numBought = numBought;
+    }
     
     @NotNull
-    private int numSold;
+    private long numSold;
+    public long getNumSold() {
+        return numSold;
+    }
+    public void setNumSold(long numSold) {
+        this.numSold = numSold;
+    }
     
     @NotNull
     private double moneySpent;
+    public double getMoneySpent() {
+        return moneySpent;
+    }
+    public void setMoneySpent(double moneySpent) {
+        this.moneySpent = moneySpent;
+    }
     
     @NotNull
     private double moneyGained;
+    public double getMoneyGained() {
+        return moneyGained;
+    }
+    public void setMoneyGained(double moneyGained) {
+        this.moneyGained = moneyGained;
+    }
 }
 

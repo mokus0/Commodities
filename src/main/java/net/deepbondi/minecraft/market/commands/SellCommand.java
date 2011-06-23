@@ -90,6 +90,14 @@ public class SellCommand implements CommandExecutor {
             plugin.getDatabase().update(item);
         } // end synchronized
         
+        plugin.recordPlayerCommodityStats(
+            player,
+            item,
+            (long) 0,
+            qtyRemoved,
+            0.0,
+            amtPaid);
+        
         if (qtyRemoved != qty) {
             sender.sendMessage(
                 "You didn't have that many.  You sold " + qtyRemoved + " for "

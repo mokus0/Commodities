@@ -113,6 +113,14 @@ public class BuyCommand implements CommandExecutor {
             plugin.getDatabase().update(item);
         } // end synchronized
         
+        plugin.recordPlayerCommodityStats(
+            player,
+            item,
+            qtyDelivered,
+            (long) 0,
+            amtCharged,
+            0.0);
+        
         if (qtyDelivered < qty) {
             sender.sendMessage(
                 "You didn't have room for everything.  You bought " 
