@@ -150,19 +150,63 @@ public class CommoditiesMarket extends JavaPlugin {
         return true;
     }
     
-    public Commodity lookupCommodity(String name) {
+    synchronized
+    public Commodity lookupCommodity(Material material, byte byteData) {
         return getDatabase()
             .find(Commodity.class)
-            .where().ieq("name", name)
+            .where().eq("itemId", material.getId())
+            .where().eq("byteData", byteData)
             .findUnique();
     }
     
-    public boolean addCommodity(String name, Material material, byte byteData) {
+    synchronized
+    public Commodity lookupCommodity(String name) {
+        // Accept "names" in several forms:
+        // Material:byte and associated forms like in ScrapBukkit's /give
+        // Commodity name from database
+        Commodity commodity = getDatabase()
+            .find(Commodity.class)
+            .where().ieq("name", name)
+            .findUnique();
+        
+        if (commodity == null) {
+            String[] parts = name.split(":");
+            Material material;
+            byte byteData = 0;
+            
+            switch (parts.length) {
+                case 2:
+                    try {
+                        byteData = (byte) Integer.parseInt(parts[1]);
+                    } catch (NumberFormatException e) {
+                        break;
+                    }
+                    
+                    // fall through
+                case 1:
+                    material = Material.matchMaterial(parts[0]);
+                    
+                    if (material == null) break;
+                    
+                    commodity = lookupCommodity(material, byteData);
+                    break;
+                default:
+                    break;
+            }
+        }
+        
+        return commodity;
+        
+    }
+    
+    synchronized
+    public boolean addCommodity(String name, Material material, byte byteData, StringBuilder outErr) {
         EbeanServer db = getDatabase();
         db.beginTransaction();
         try {
             // Check if commodity already exists
             if (lookupCommodity(name) != null) {
+                outErr.append("Commodity already exists.");
                 return false;
             } else {
                 Commodity item = new Commodity();
@@ -183,6 +227,7 @@ public class CommoditiesMarket extends JavaPlugin {
         }
     }
 
+    synchronized
     public boolean adjustStock(String name, long stockChange, StringBuilder outErr) {
         EbeanServer db = getDatabase();
         db.beginTransaction();

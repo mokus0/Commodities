@@ -56,11 +56,11 @@ public class AdminAddCommand extends AdminSubCommand {
                 }
             }
             
-            if (admin.plugin.addCommodity(itemName, itemMaterial, byteData)) {
+            StringBuilder outErr = new StringBuilder();
+            if (admin.plugin.addCommodity(itemName, itemMaterial, byteData, outErr)) {
                 sender.sendMessage("Commodity added successfully.");
             } else {
-                // TODO: proper error reporting
-                sender.sendMessage("Commodity could not be added.  Maybe it already exists?");
+                sender.sendMessage("Commodity could not be added.  " + outErr.toString());
             }
             
             return true;

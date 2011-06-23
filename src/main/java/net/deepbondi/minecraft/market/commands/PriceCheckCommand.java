@@ -15,6 +15,16 @@ public class PriceCheckCommand implements CommandExecutor {
     }
     
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+        if (args.length == 0) {
+            try {
+                listItems(sender);
+            } catch (NotReadyException e) {
+                e.explainThis(plugin, sender);
+            }
+            
+            return true;
+        }
+        
         if (args.length >= 1 && args.length <= 2) {
             String itemName = args[0];
             long qty = 1;
@@ -27,37 +37,42 @@ public class PriceCheckCommand implements CommandExecutor {
                 }
             }
             
-            Commodity item = plugin.lookupCommodity(itemName);
-            if (item == null) {
-                sender.sendMessage(ChatColor.RED + "Can't find commodity [" + ChatColor.WHITE + itemName + ChatColor.RED + "]");
-                return true;
-            }
-            
-            PriceModel model;
-            iConomy economy;
-            
             try {
-                model = plugin.getPriceModel();
-                economy = plugin.getIConomy();
-                
+                priceCheck(sender, itemName, qty);
             } catch (NotReadyException e) {
-                String pluginName = plugin.getDescription().getName();
-                sender.sendMessage(ChatColor.RED + pluginName + " is not ready: " + e.getMessage());
-                
-                return true;
+                e.explainThis(plugin, sender);
             }
-            
-            // TODO: don't show buy price unless can buy that many
-            double buyPrice = model.checkBuyPrice(item, qty, plugin);
-            double sellPrice = model.checkSellPrice(item, qty, plugin);
-            sender.sendMessage("" + qty + " " + item.getName() + " would cost " 
-                + economy.format(buyPrice) + " (" + item.getInStock() + " available), would sell for "
-                + economy.format(sellPrice));
             
             return true;
         }
         
         return false;
+    }
+        
+    private void priceCheck(CommandSender sender, String itemName, long qty)
+    throws NotReadyException {
+        Commodity item = plugin.lookupCommodity(itemName);
+        if (item == null) {
+            sender.sendMessage(ChatColor.RED + "Can't find commodity [" + ChatColor.WHITE + itemName + ChatColor.RED + "]");
+            return;
+        }
+        
+        PriceModel model = plugin.getPriceModel();
+        iConomy economy = plugin.getIConomy();
+        
+        long available = item.getInStock();
+        long buyQty = qty > available ? available : qty;
+        double buyPrice = model.checkBuyPrice(item, buyQty, plugin);
+        double sellPrice = model.checkSellPrice(item, qty, plugin);
+        sender.sendMessage("" + qty + " " + item.getName() + " would cost " 
+            + economy.format(buyPrice) + " (" + item.getInStock() + " available), would sell for "
+            + economy.format(sellPrice));
+    }
+    
+    private void listItems(CommandSender sender) 
+    throws NotReadyException {
+        // TODO: write me
+        sender.sendMessage("This command would list the tradeable items, if it were implemented!");
     }
 }
 

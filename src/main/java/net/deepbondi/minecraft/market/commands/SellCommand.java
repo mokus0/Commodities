@@ -31,11 +31,11 @@ public class SellCommand implements CommandExecutor {
         
         if (args.length > 0 && args.length <= 2) {
             String itemName = args[0];
-            long qty = 1;
+            int qty = 1;
             
             if (args.length > 1) {
                 try {
-                    qty = Long.parseLong(args[1]);
+                    qty = Integer.parseInt(args[1]);
                 } catch (NumberFormatException e) {
                     return false;
                 }
@@ -47,52 +47,58 @@ public class SellCommand implements CommandExecutor {
                 return true;
             }
             
-            PriceModel model;
-            double price;
-            iConomy economy;
-            Holdings holdings;
             try {
-                model = plugin.getPriceModel();
-                price = model.checkBuyPrice(item, qty, plugin);
-                economy = plugin.getIConomy();
-                holdings = plugin.getAccount(player.getName()).getHoldings();
+                sellItems(sender, player, item, qty);
             } catch (NotReadyException e) {
-                sender.sendMessage("Commodities market is not ready yet: " + e.getMessage());
-                return true;
-            }
-            
-            Inventory inventory = player.getInventory();
-            ItemStack sellingItems = new ItemStack(
-                item.getItemId(),
-                (int)qty, // TODO: check for overflow
-                (short) 0,
-                item.getByteData());
-            Map<Integer, ItemStack> leftovers = inventory.removeItem(sellingItems);
-            
-            long qtyRemoved = qty;
-            for (ItemStack leftover : leftovers.values()) {
-                qtyRemoved -= leftover.getAmount();
-            }
-            double payment = model.checkSellPrice(item, qtyRemoved, plugin);
-            
-            holdings.add(payment);
-            item.setInStock(item.getInStock() + qtyRemoved);
-            plugin.getDatabase().update(item);
-            
-            if (qtyRemoved != qty) {
-                sender.sendMessage(
-                    "You didn't have that many.  You sold " + qtyRemoved + " for "
-                     + economy.format(payment) + ".");
-            } else {
-                sender.sendMessage(
-                    "" + qtyRemoved + " " + item.getName() + " sold for "
-                    + economy.format(payment) + ".");
+                e.explainThis(plugin, sender);
             }
             
             return true;
         }
         
         return false;
+    }
+    
+    private void sellItems(CommandSender sender, Player player, Commodity item, int qty)
+    throws NotReadyException {
+        iConomy economy = plugin.getIConomy();
+        
+        long qtyRemoved;
+        double amtPaid;
+        
+        synchronized(plugin) {
+            PriceModel model = plugin.getPriceModel();
+            double price = model.checkSellPrice(item, qty, plugin);
+            Holdings holdings = plugin.getAccount(player.getName()).getHoldings();
+            
+            Inventory inventory = player.getInventory();
+            ItemStack sellingItems = new ItemStack(
+                item.getItemId(),
+                (int)qty,
+                (short) 0,
+                item.getByteData());
+            Map<Integer, ItemStack> leftovers = inventory.removeItem(sellingItems);
+            
+            qtyRemoved = qty;
+            for (ItemStack leftover : leftovers.values()) {
+                qtyRemoved -= leftover.getAmount();
+            }
+            amtPaid = model.checkSellPrice(item, qtyRemoved, plugin);
+            
+            holdings.add(amtPaid);
+            item.setInStock(item.getInStock() + qtyRemoved);
+            plugin.getDatabase().update(item);
+        } // end synchronized
+        
+        if (qtyRemoved != qty) {
+            sender.sendMessage(
+                "You didn't have that many.  You sold " + qtyRemoved + " for "
+                 + economy.format(amtPaid) + ".");
+        } else {
+            sender.sendMessage(
+                "" + qtyRemoved + " " + item.getName() + " sold for "
+                + economy.format(amtPaid) + ".");
+        }
     }
 }
 

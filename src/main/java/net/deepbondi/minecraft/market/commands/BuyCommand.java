@@ -31,11 +31,11 @@ public class BuyCommand implements CommandExecutor {
         
         if (args.length > 0 && args.length <= 2) {
             String itemName = args[0];
-            long qty = 1;
+            int qty = 1;
             
             if (args.length > 1) {
                 try {
-                    qty = Long.parseLong(args[1]);
+                    qty = Integer.parseInt(args[1]);
                 } catch (NumberFormatException e) {
                     return false;
                 }
@@ -46,70 +46,83 @@ public class BuyCommand implements CommandExecutor {
                 sender.sendMessage("Can't find a commodity by that name.");
                 return true;
             }
-            long stock = item.getInStock();
-            if (stock < qty) {
-                sender.sendMessage(item.getName() + " only has " + item.getInStock() + " units in stock.");
-                return true;
-            }
             
-            PriceModel model;
-            double price;
-            iConomy economy;
-            Holdings holdings;
             try {
-                model = plugin.getPriceModel();
-                price = model.checkBuyPrice(item, qty, plugin);
-                economy = plugin.getIConomy();
-                holdings = plugin.getAccount(player.getName()).getHoldings();
+                buyItems(sender, player, item, qty);
             } catch (NotReadyException e) {
-                sender.sendMessage("Commodities market is not ready yet: " + e.getMessage());
-                return true;
+                e.explainThis(plugin, sender);
             }
-            
-            if (!holdings.hasEnough(price)) {
-                sender.sendMessage("You can't afford that!  You need "
-                    + economy.format(price) + " but only have "
-                    + economy.format(holdings.balance()) + ".");
-                return true;
-            }
-            
-            // Transaction is OK
-            // TODO: make sure all this happens "atomically"
-            
-            Inventory inventory = player.getInventory();
-            
-            ItemStack purchasedItems = new ItemStack(
-                item.getItemId(),
-                (int)qty, // TODO: check for overflow
-                (short) 0,
-                item.getByteData());
-            Map<Integer, ItemStack> leftovers = inventory.addItem(purchasedItems);
-            
-            long qtyDelivered = qty;
-            for (ItemStack leftover : leftovers.values()) {
-                qtyDelivered -= leftover.getAmount();
-            }
-            double charge = model.checkBuyPrice(item, qtyDelivered, plugin);
-            
-            holdings.subtract(charge);
-            item.setInStock(stock - qtyDelivered);
-            plugin.getDatabase().update(item);
-            
-            if (qtyDelivered < qty) {
-                sender.sendMessage(
-                    "You didn't have room for everything.  You bought " 
-                    + qtyDelivered + " for "
-                    + economy.format(charge) + ".");
-            } else {
-                sender.sendMessage(
-                    "" + qtyDelivered + " " + item.getName() + " purchased for "
-                    + economy.format(charge) + ".");
-            }
-            
             return true;
         }
         
         return false;
+    }
+    
+    private void buyItems(CommandSender sender, Player player, Commodity item, int qty)
+    throws NotReadyException {
+        // TODO: make sure all this happens "atomically" with other iConomy
+        // transactions.  'synchronized' should at least make this atomic 
+        // relative to other transactions in this plugin.
+        iConomy economy = plugin.getIConomy();
+        
+        long qtyDelivered;
+        double amtCharged;
+        
+        synchronized(plugin) {
+                    // Check whether transaction makes sense.
+            // 1. Market stock must be sufficient
+            long stock = item.getInStock();
+            if (stock < qty) {
+                sender.sendMessage(item.getName() + " only has " + item.getInStock() + " units in stock.");
+                return;
+            }
+        
+            // 2. Player must have enough money
+            PriceModel model = plugin.getPriceModel();
+            double price = model.checkBuyPrice(item, qty, plugin);
+            Holdings holdings = plugin.getAccount(player.getName()).getHoldings();
+        
+            if (!holdings.hasEnough(price)) {
+                sender.sendMessage("You can't afford that!  You need "
+                    + economy.format(price) + " but only have "
+                    + economy.format(holdings.balance()) + ".");
+                return;
+            }
+            
+            // Transaction is OK: move the goods.
+            // 1. Put the items in the player's inventory, deducting
+            //    what didn't fit so they don't get charged for it.
+            Inventory inventory = player.getInventory();
+            
+            ItemStack purchasedItems = new ItemStack(
+                item.getItemId(), qty,
+                (short) 0,
+                item.getByteData());
+            Map<Integer, ItemStack> leftovers = inventory.addItem(purchasedItems);
+            qtyDelivered = qty;
+            for (ItemStack leftover : leftovers.values()) {
+                qtyDelivered -= leftover.getAmount();
+            }
+            
+            // 2. Charge them for what they received
+            amtCharged = model.checkBuyPrice(item, qtyDelivered, plugin);
+            holdings.subtract(amtCharged);
+            
+            // 3. Update market stock to reflect the items transferred
+            item.setInStock(stock - qtyDelivered);
+            plugin.getDatabase().update(item);
+        } // end synchronized
+        
+        if (qtyDelivered < qty) {
+            sender.sendMessage(
+                "You didn't have room for everything.  You bought " 
+                + qtyDelivered + " for "
+                + economy.format(amtCharged) + ".");
+        } else {
+            sender.sendMessage(
+                "" + qtyDelivered + " " + item.getName() + " purchased for "
+                + economy.format(amtCharged) + ".");
+        }
     }
 }
 
