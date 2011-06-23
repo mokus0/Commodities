@@ -3,22 +3,21 @@ import org.bukkit.Material;
 
 // A very simple model based on supply only.  The marginal cost of an item
 // is determined by an exponential function of the supply, adjusted to fix
-// `basePricePerStack` as the price of a single stack when the stock is at
-// `referenceStockLevel' stacks, and `maxPricePerStack' as the price 
-// of a full stack when there is only one item left.
+// `basePricePerStack` as the price of a single item when the stock is at
+// `referenceStockLevel' items, and `maxPricePerItem' as the price 
+// when there is only one item left.
 //
 // Specifically, to compute the marginal value of adding an item:
 //
 //  let r = referenceStockLevel
 //      n = number of items on the market
-//      s = stack size of the item type
 //      y0 = maxPricePerStack
 //      p = basePricePerStack
-//   in p/s * (y0 / p) ** (1 - n / (s*r))
+//   in p * (y0 / p) ** (1 - n / r)
 public class BondilandPriceModel implements PriceModel {
-    private double basePricePerStack = 1;
-    private int referenceStockLevel = 100;
-    private double maxPricePerStack = 30;
+    double basePricePerItem = 1;
+    int referenceStockLevel = 100;
+    double maxPricePerItem = 30;
     
     // Compute the total value in the market for commodity with the given
     // stack size and stock level.
@@ -30,15 +29,13 @@ public class BondilandPriceModel implements PriceModel {
              - indefiniteMarketValue(stackSize, 0);
     }
     private double indefiniteMarketValue(int stackSize, long qty) {
-        double p = basePricePerStack;
-        double y0 = maxPricePerStack;
+        double p = basePricePerItem;
+        double y0 = maxPricePerItem;
         double r = referenceStockLevel;
-        double s = stackSize;
         double alpha = p / y0;
         double lnAlpha = StrictMath.log(alpha);
-        double q = s * lnAlpha;
         
-        double x = (double) qty / s;
+        double x = (double) qty;
         
         return p*r / lnAlpha * StrictMath.pow(alpha, x/r - 1.0);
     }

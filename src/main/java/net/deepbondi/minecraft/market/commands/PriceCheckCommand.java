@@ -64,8 +64,14 @@ public class PriceCheckCommand implements CommandExecutor {
         long buyQty = qty > available ? available : qty;
         double buyPrice = model.checkBuyPrice(item, buyQty, plugin);
         double sellPrice = model.checkSellPrice(item, qty, plugin);
-        sender.sendMessage("" + qty + " " + item.getName() + " would cost " 
-            + economy.format(buyPrice) + " (" + item.getInStock() + " available), would sell for "
+        
+        if (buyQty > 0)
+            sender.sendMessage("" + buyQty + " " + item.getName() + " would cost " 
+                + economy.format(buyPrice) + " (there are " + item.getInStock() + " available)");
+        else
+            sender.sendMessage("No " + item.getName() + " available to buy.");
+        
+        sender.sendMessage("" + qty + " " + item.getName() + " would sell for " 
             + economy.format(sellPrice));
     }
     
