@@ -15,16 +15,6 @@ public class PriceCheckCommand implements CommandExecutor {
     }
     
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (args.length == 0) {
-            try {
-                listItems(sender);
-            } catch (NotReadyException e) {
-                e.explainThis(plugin, sender);
-            }
-            
-            return true;
-        }
-        
         if (args.length >= 1 && args.length <= 2) {
             String itemName = args[0];
             long qty = 1;
@@ -73,12 +63,6 @@ public class PriceCheckCommand implements CommandExecutor {
         
         sender.sendMessage("" + qty + " " + item.getName() + " would sell for " 
             + economy.format(sellPrice));
-    }
-    
-    private void listItems(CommandSender sender) 
-    throws NotReadyException {
-        // TODO: write me
-        sender.sendMessage("This command would list the tradeable items, if it were implemented!");
     }
 }
 

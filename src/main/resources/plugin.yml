@@ -8,9 +8,11 @@ description: Simple commodities market for iConomy
 commands:
   commodities:
     aliases: [cm]
-    description: Administrative interface for configuring commodities
+    description: List commodities or configure commodities market
     usage: |
-           /<command>: no help yet
+           /<command>: list commodities available for trading.
+           /<command> <subcmd>: run an administrative subcommand.
+           /<command> help: see a list of administrative subcommands.
   pricecheck:
     aliases: [pc]
     description: Gets info about available stock and going rate for an item
