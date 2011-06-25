@@ -246,7 +246,7 @@ public class CommoditiesMarket extends JavaPlugin {
                 }
                 
                 item.setInStock(stock);
-                db.update(item);
+                db.update(item, adjStkUpdateProps);
             }
             
             db.commitTransaction();
@@ -258,12 +258,16 @@ public class CommoditiesMarket extends JavaPlugin {
     }
     
     private static final Set<String> pcsUpdateProps;
+    private static final Set<String> adjStkUpdateProps;
     static {
         pcsUpdateProps = new HashSet<String>();
         pcsUpdateProps.add("numBought");
         pcsUpdateProps.add("numSold");
         pcsUpdateProps.add("moneySpent");
         pcsUpdateProps.add("moneyGained");
+        
+        adjStkUpdateProps = new HashSet<String>();
+        adjStkUpdateProps.add("inStock");
     }
 
     synchronized

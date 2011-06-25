@@ -41,6 +41,8 @@ public class BuyCommand implements CommandExecutor {
                 }
             }
             
+            if (qty <= 0) return false;
+            
             Commodity item = plugin.lookupCommodity(itemName);
             if (item == null) {
                 sender.sendMessage("Can't find a commodity by that name.");
@@ -103,14 +105,22 @@ public class BuyCommand implements CommandExecutor {
             for (ItemStack leftover : leftovers.values()) {
                 qtyDelivered -= leftover.getAmount();
             }
+            if (qtyDelivered == 0) {
+                sender.sendMessage(ChatColor.RED + "Your inventory is full.");
+                return;
+            }
             
-            // 2. Charge them for what they received
             amtCharged = model.checkBuyPrice(item, qtyDelivered, plugin);
-            holdings.subtract(amtCharged);
             
-            // 3. Update market stock to reflect the items transferred
-            item.setInStock(stock - qtyDelivered);
-            plugin.getDatabase().update(item);
+            // 2. Update market stock to reflect the items transferred
+            StringBuilder outErr = new StringBuilder();
+            if (plugin.adjustStock(item.getName(), -qtyDelivered, outErr)) {
+                // 3. Charge them for what they received
+                holdings.subtract(amtCharged);
+            } else {
+                // TODO: restore items that were taken from inventory
+                sender.sendMessage(ChatColor.RED + "Transaction failed: " + outErr.toString());
+            }
         } // end synchronized
         
         plugin.recordPlayerCommodityStats(

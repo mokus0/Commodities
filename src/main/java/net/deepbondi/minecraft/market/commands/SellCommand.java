@@ -41,6 +41,8 @@ public class SellCommand implements CommandExecutor {
                 }
             }
             
+            if (qty <= 0) return false;
+            
             Commodity item = plugin.lookupCommodity(itemName);
             if (item == null) {
                 sender.sendMessage("Can't find a commodity by that name.");
@@ -83,11 +85,20 @@ public class SellCommand implements CommandExecutor {
             for (ItemStack leftover : leftovers.values()) {
                 qtyRemoved -= leftover.getAmount();
             }
+            if (qtyRemoved == 0) {
+                sender.sendMessage(ChatColor.RED + "You don't have any of those to sell.");
+                return;
+            }
+            
             amtPaid = model.checkSellPrice(item, qtyRemoved, plugin);
             
-            holdings.add(amtPaid);
-            item.setInStock(item.getInStock() + qtyRemoved);
-            plugin.getDatabase().update(item);
+            StringBuilder outErr = new StringBuilder();
+            if (plugin.adjustStock(item.getName(), qtyRemoved, outErr)) {
+                holdings.add(amtPaid);
+            } else {
+                // TODO: remove items that were added to inventory
+                sender.sendMessage(ChatColor.RED + "Transaction failed: " + outErr.toString());
+            }
         } // end synchronized
         
         plugin.recordPlayerCommodityStats(
