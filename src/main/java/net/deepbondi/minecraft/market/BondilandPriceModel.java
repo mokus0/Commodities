@@ -2,21 +2,17 @@ package net.deepbondi.minecraft.market;
 import org.bukkit.Material;
 
 // A very simple model based on supply only.  The marginal cost of an item
-// is determined by an exponential function of the supply, adjusted to fix
-// `basePricePerStack` as the price of a single item when the stock is at
+// is determined by a power law function of the supply, adjusted to fix
+// `basePricePerItem` as the price of a single item when the stock is at
 // `referenceStockLevel' items, and `maxPricePerItem' as the price 
 // when there is only one item left.
-//
-// Specifically, to compute the marginal value of adding an item:
-//
-//  let r = referenceStockLevel
-//      n = number of items on the market
-//      y0 = maxPricePerStack
-//      p = basePricePerStack
-//   in p * (y0 / p) ** (1 - n / r)
+// 
+// Note that `maxPricePerItem` is only a very rough approximation due to
+// the use of an integral in place of a summation in `marketValue`.  This
+// is an intentional compromise.
 public class BondilandPriceModel implements PriceModel {
-    double basePricePerItem = 1;
-    int referenceStockLevel = 100;
+    double basePricePerItem = 0.2;
+    int referenceStockLevel = 1000;
     double maxPricePerItem = 30;
     
     // Compute the total value in the market for commodity with the given
@@ -25,19 +21,12 @@ public class BondilandPriceModel implements PriceModel {
         // function from stock levels 0 through qty-1.
         // This is an approximation (the integral of the same function from 0 to qty)
     private double marketValue(int stackSize, long qty) {
-        return indefiniteMarketValue(stackSize, qty)
-             - indefiniteMarketValue(stackSize, 0);
-    }
-    private double indefiniteMarketValue(int stackSize, long qty) {
         double p = basePricePerItem;
         double y0 = maxPricePerItem;
         double r = referenceStockLevel;
-        double alpha = p / y0;
-        double lnAlpha = StrictMath.log(alpha);
         
-        double x = (double) qty;
-        
-        return p*r / lnAlpha * StrictMath.pow(alpha, x/r - 1.0);
+        double alpha = StrictMath.log(y0/p) / StrictMath.log(r) - 1.0;
+        return y0 / ((-alpha) * StrictMath.pow((double)qty, alpha));
     }
     
     private double basePrice(Commodity item, long qty, CommoditiesMarket market) {

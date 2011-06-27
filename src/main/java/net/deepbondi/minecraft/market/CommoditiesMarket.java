@@ -27,7 +27,7 @@ import org.bukkit.util.config.Configuration;
 public class CommoditiesMarket extends JavaPlugin {
     private iConomy economy = null;
     private PermissionHandler permissions = null;
-    private PriceModel model = new BondilandMixedPriceModel();
+    private PriceModel model = new BondilandPriceModel();
     private int initialItemQty = 200;
     
     public void onEnable() {
