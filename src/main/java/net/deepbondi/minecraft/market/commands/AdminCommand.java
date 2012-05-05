@@ -1,6 +1,6 @@
 package net.deepbondi.minecraft.market.commands;
 
-import com.iConomy.*;
+import com.iCo6.*;
 import java.util.HashMap;
 import java.util.Map;
 import net.deepbondi.minecraft.market.*;

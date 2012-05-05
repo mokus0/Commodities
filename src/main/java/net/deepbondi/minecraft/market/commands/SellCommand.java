@@ -1,7 +1,7 @@
 package net.deepbondi.minecraft.market.commands;
 
-import com.iConomy.*;
-import com.iConomy.system.*;
+import com.iCo6.*;
+import com.iCo6.system.*;
 import java.util.Map;
 import net.deepbondi.minecraft.market.*;
 import org.bukkit.ChatColor;

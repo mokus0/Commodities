@@ -1,8 +1,9 @@
 package net.deepbondi.minecraft.market;
 
 import com.avaje.ebean.EbeanServer;
-import com.iConomy.*;
-import com.iConomy.system.Account;
+import com.iCo6.*;
+import com.iCo6.system.Accounts;
+import com.iCo6.system.Account;
 import com.nijikokun.bukkit.Permissions.Permissions;
 import com.nijiko.permissions.PermissionHandler;
 import java.util.ArrayList;
@@ -14,18 +15,20 @@ import net.deepbondi.minecraft.market.commands.*;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
-import org.bukkit.event.Event.Priority;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.event.server.PluginEnableEvent;
-import org.bukkit.event.server.ServerListener;
+import org.bukkit.event.Listener;
 import org.bukkit.Material;
+import org.bukkit.plugin.EventExecutor;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.util.config.Configuration;
+import org.bukkit.configuration.Configuration;
 
 public class CommoditiesMarket extends JavaPlugin {
     private iConomy economy = null;
+    private Accounts accounts = null;
     private PermissionHandler permissions = null;
     private PriceModel model = new BondilandPriceModel();
     private int initialItemQty = 200;
@@ -64,7 +67,7 @@ public class CommoditiesMarket extends JavaPlugin {
     
     public void loadConfig() {
         try {
-            Configuration config = this.getConfiguration();
+            Configuration config = this.getConfig();
             initialItemQty = config.getInt("itemdefaults.instock", initialItemQty);
         } catch (Exception e) {
             String pluginName = getDescription().getName();
@@ -75,13 +78,19 @@ public class CommoditiesMarket extends JavaPlugin {
     }
 
     public void saveConfig() {
-        Configuration config = getConfiguration();
-        config.setProperty("itemdefaults.instock", initialItemQty);
-        config.save();
+        getConfig().set("itemdefaults.instock", initialItemQty);
+        super.saveConfig();
     }
     
     private PluginListener pl = new PluginListener();
-    private class PluginListener extends ServerListener {
+    private class PluginListener implements EventExecutor {
+        public void execute(Listener l, Event e) {
+            if (e instanceof PluginEnableEvent)
+                onPluginEnable((PluginEnableEvent) e);
+            if (e instanceof PluginDisableEvent)
+                onPluginDisable((PluginDisableEvent) e);
+        }
+        
         public void onPluginEnable(PluginEnableEvent event) {
             discover(event.getPlugin());
         }
@@ -103,6 +112,7 @@ public class CommoditiesMarket extends JavaPlugin {
         
         void discoverEconomy(iConomy plugin) {
             economy = plugin;
+            accounts = new Accounts();
         }
         void discoverPermissions(Permissions plugin) {
             permissions = plugin.getHandler();
@@ -111,7 +121,7 @@ public class CommoditiesMarket extends JavaPlugin {
     
     private void registerPluginListener() {
         PluginManager pm = getServer().getPluginManager();
-        pm.registerEvent(Event.Type.PLUGIN_ENABLE, pl, Priority.Monitor, this);
+        pm.registerEvent(PluginEnableEvent.class, new Listener(){}, EventPriority.MONITOR, pl, this);
         
         Plugin ic = pm.getPlugin("iConomy");
         if (ic.isEnabled()) pl.discover(ic);
@@ -134,7 +144,7 @@ public class CommoditiesMarket extends JavaPlugin {
     public Account getAccount(String name)
     throws NotReadyException {
         getIConomy();
-        return iConomy.getAccount(name);
+        return accounts.get(name);
     }
     
     public PermissionHandler getPermissions()

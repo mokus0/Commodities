@@ -1,7 +1,7 @@
 package net.deepbondi.minecraft.market.commands;
 
-import com.iConomy.*;
-import com.iConomy.system.*;
+import com.iCo6.*;
+import com.iCo6.system.*;
 import java.util.Map;
 import net.deepbondi.minecraft.market.*;
 import org.bukkit.ChatColor;
@@ -87,7 +87,7 @@ public class BuyCommand implements CommandExecutor {
             if (!holdings.hasEnough(price)) {
                 sender.sendMessage("You can't afford that!  You need "
                     + economy.format(price) + " but only have "
-                    + economy.format(holdings.balance()) + ".");
+                    + economy.format(holdings.getBalance()) + ".");
                 return;
             }
             
