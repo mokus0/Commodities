@@ -31,6 +31,10 @@ public class BondilandPriceModel implements PriceModel {
     
     private double basePrice(Commodity item, long qty, CommoditiesMarket market) {
         Material itemMaterial = Material.getMaterial(item.getItemId());
+
+        // Cookies are always 1.0
+        if (itemMaterial == Material.COOKIE) return StrictMath.abs(qty);
+
         int stackSize = itemMaterial.getMaxStackSize();
         long stockLevel = item.getInStock();
         
@@ -38,17 +42,13 @@ public class BondilandPriceModel implements PriceModel {
                             - marketValue(stackSize, stockLevel + qty));
     }
     
-    private double buyerTax  = 0.00;
-    private double sellerTax = 0.00;
+    private double buyerTax  = 0.05;
+    private double sellerTax = 0.05;
     
     public double checkBuyPrice(Commodity item, long qty, CommoditiesMarket market) {
-        // Cookies are always 1.0
-        if (item.getItemId() == Material.COOKIE.getId()) return 1.0;
         return (1.0 + buyerTax) * basePrice(item, -qty, market);
     }
     public double checkSellPrice(Commodity item, long qty, CommoditiesMarket market) {
-        // Cookies are always 1.0
-        if (item.getItemId() == Material.COOKIE.getId()) return 1.0;
         return basePrice(item, qty, market) / (1.0 + sellerTax);
     }
 }
