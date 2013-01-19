@@ -1,9 +1,22 @@
+###################
+# Global/IntelliJ #
+###################
+
+*.iml
+*.ipr
+*.iws
+.idea/
+
+
 ##############
 # Global/OSX #
 ##############
 
 .DS_Store
-Icon?
+.AppleDouble
+.LSOverride
+Icon
+
 
 # Thumbnails
 ._*
@@ -18,6 +31,12 @@ Icon?
 ########
 
 *.class
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
 
 #########
 # Maven #
