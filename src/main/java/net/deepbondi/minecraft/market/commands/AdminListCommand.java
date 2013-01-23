@@ -1,38 +1,46 @@
 package net.deepbondi.minecraft.market.commands;
 
-import java.util.List;
-import net.deepbondi.minecraft.market.*;
+import net.deepbondi.minecraft.market.CommoditiesMarket;
+import net.deepbondi.minecraft.market.Commodity;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 
+import java.util.List;
+
 public class AdminListCommand extends AdminSubCommand {
-    private AdminCommand admin;
-    public AdminListCommand(AdminCommand admin) {
-        this.admin = admin;
+    private final CommoditiesMarket plugin;
+
+    public AdminListCommand(final CommoditiesMarket plugin) {
+        this.plugin = plugin;
     }
-    
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+
+    @Override
+    public boolean onCommand(final CommandSender sender, final Command cmd, final String label, final String[] args) {
         if (args.length != 0) {
             return false;
         }
-        
-        List<Commodity> commodities =
-            admin.plugin.getDatabase()
-                .find(Commodity.class)
-                .orderBy("name")
-                .findList();
-        
-        StringBuilder itemNames = new StringBuilder();
-        for (Commodity item : commodities) {
+
+        final List<Commodity> commodities =
+                plugin.getDatabase()
+                        .find(Commodity.class)
+                        .orderBy("name")
+                        .findList();
+
+        final StringBuilder itemNames = new StringBuilder();
+        for (final Commodity item : commodities) {
             if (itemNames.length() > 0)
                 itemNames.append(", ");
-            
+
             itemNames.append(item.getName());
         }
-        
+
         sender.sendMessage("Commodities available for trade: " + itemNames);
-        
+
+        return true;
+    }
+
+    @Override
+    public boolean isAuthorized(final CommandSender sender) {
         return true;
     }
 }

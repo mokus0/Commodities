@@ -1,14 +1,14 @@
 package net.deepbondi.minecraft.market.commands;
+
+import net.deepbondi.minecraft.market.NotReadyException;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 
-public abstract class AdminSubCommand implements CommandExecutor {
-    public String requiredPermission() {
-        return null;
+abstract class AdminSubCommand implements CommandExecutor {
+    public void helpPage(final CommandSender sender) {
+        sender.sendMessage("No help yet configured for this sub-command!");
     }
-    
-    public void helpPage(CommandSender sender) {
-        sender.sendMessage("No help yet configured for this subcommand!");
-    }
+
+    public abstract boolean isAuthorized(CommandSender sender) throws NotReadyException;
 }
 

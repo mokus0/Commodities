@@ -1,53 +1,42 @@
 package net.deepbondi.minecraft.market.commands;
 
-import net.deepbondi.minecraft.market.*;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
+import net.deepbondi.minecraft.market.CommoditiesMarket;
+import net.deepbondi.minecraft.market.NotReadyException;
+import net.deepbondi.minecraft.market.Util;
 import org.bukkit.Material;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 
 public class AdminAddCommand extends AdminSubCommand {
-    private AdminCommand admin;
-    
-    public AdminAddCommand(AdminCommand admin) {
-        this.admin = admin;
+    private static final String REQUIRED_PERMISSION = "admin.add";
+
+    private final CommoditiesMarket plugin;
+
+    public AdminAddCommand(final CommoditiesMarket plugin) {
+        this.plugin = plugin;
     }
-    
+
     @Override
-    public String requiredPermission() {
-        return "admin.add";
-    }
-    
-    @Override
-    public void helpPage(CommandSender sender) {
+    public void helpPage(final CommandSender sender) {
         sender.sendMessage("Adds an item to the Commodities Exchange, making it tradeable by players");
         sender.sendMessage("The item id and subId may already be known by the server based on the name.");
         sender.sendMessage("If not, they must be specified.  The default byteData is 0");
         sender.sendMessage("Usage: /cm add <name> [<id> [<byteData>]]");
     }
-    
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        String itemName;
-        String itemId;
-        Material itemMaterial;
-        byte byteData = 0;
-        
+
+    @Override
+    public boolean onCommand(final CommandSender sender, final Command cmd, final String label, final String[] args) {
         if (args.length > 0 && args.length <= 3) {
-            itemName = args[0];
-            
-            if (args.length > 1) {
-                itemId = mangleMaterialName(args[1]);
-            } else {
-                itemId = mangleMaterialName(itemName);
-            }
-            
-            itemMaterial = lookupMaterial(itemId);
-            
+            final String itemName = args[0];
+            final String itemId = mangleMaterialName(args.length > 1 ? args[1] : itemName);
+            final Material itemMaterial = lookupMaterial(itemId);
+
             if (itemMaterial == null) {
                 sender.sendMessage("Item " + itemId + " not found!");
                 return true;
             }
-            
+
+            byte byteData = 0;
             if (args.length > 2) {
                 try {
                     byteData = (byte) Integer.parseInt(args[2]);
@@ -55,37 +44,42 @@ public class AdminAddCommand extends AdminSubCommand {
                     return false;
                 }
             }
-            
-            StringBuilder outErr = new StringBuilder();
-            if (admin.plugin.addCommodity(itemName, itemMaterial, byteData, outErr)) {
+
+            final StringBuilder outErr = new StringBuilder();
+            if (plugin.addCommodity(itemName, itemMaterial, byteData, outErr)) {
                 sender.sendMessage("Commodity added successfully.");
             } else {
-                sender.sendMessage("Commodity could not be added.  " + outErr.toString());
+                sender.sendMessage("Commodity could not be added.  " + outErr);
             }
-            
+
             return true;
         }
-        
+
         return false;
     }
-    
-    private String mangleMaterialName(String name) {
+
+    private static String mangleMaterialName(final String name) {
         // Apply a fairly liberal transformation to ALL_CAPS_UNDERSCORED
-        String[] parts = Util.splitCamelCase(name);
-        StringBuilder mangled = new StringBuilder();
-        for (String part : parts) {
+        final String[] parts = Util.splitCamelCase(name);
+        final StringBuilder mangled = new StringBuilder();
+        for (final String part : parts) {
             if (mangled.length() > 0) {
-                mangled.append("_");
+                mangled.append('_');
             }
-            
+
             mangled.append(part.toUpperCase());
         }
-        
+
         return mangled.toString();
     }
-    
-    private Material lookupMaterial(String name) {
+
+    private static Material lookupMaterial(final String name) {
         return Material.matchMaterial(name);
+    }
+
+    @Override
+    public boolean isAuthorized(final CommandSender sender) throws NotReadyException {
+        return plugin.hasPermission(sender, REQUIRED_PERMISSION);
     }
 }
 

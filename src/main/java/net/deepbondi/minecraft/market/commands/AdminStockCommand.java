@@ -1,27 +1,24 @@
 package net.deepbondi.minecraft.market.commands;
 
-import net.deepbondi.minecraft.market.*;
+import net.deepbondi.minecraft.market.CommoditiesMarket;
+import net.deepbondi.minecraft.market.NotReadyException;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.Material;
 
 public class AdminStockCommand extends AdminSubCommand {
-    private AdminCommand admin;
-    
-    public AdminStockCommand(AdminCommand admin) {
-        this.admin = admin;
+    private static final String REQUIRED_PERMISSION = "admin.stock";
+
+    private final CommoditiesMarket plugin;
+
+    public AdminStockCommand(final CommoditiesMarket plugin) {
+        this.plugin = plugin;
     }
-    
+
     @Override
-    public String requiredPermission() {
-        return "admin.stock";
-    }
-    
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+    public boolean onCommand(final CommandSender sender, final Command cmd, final String label, final String[] args) {
         if (args.length == 2) {
-            String itemName = args[0];
-            long stockChange;
+            final String itemName = args[0];
+            final long stockChange;
             try {
                 String sc = args[1];
                 boolean pos = false;
@@ -30,24 +27,29 @@ public class AdminStockCommand extends AdminSubCommand {
                     sc = sc.substring(1, sc.length());
                     pos = true;
                 }
-                
+
                 stockChange = Long.parseLong(sc);
-                
+
                 if (pos && stockChange < 0) return false;
             } catch (NumberFormatException e) {
                 return false;
             }
-            
-            StringBuilder outErr = new StringBuilder();
-            if (admin.plugin.adjustStock(itemName, stockChange, outErr)) {
+
+            final StringBuilder outErr = new StringBuilder();
+            if (plugin.adjustStock(itemName, stockChange, outErr)) {
                 sender.sendMessage("Stock successfully changed");
             } else {
-                sender.sendMessage("Stock change failed - " + outErr.toString());
+                sender.sendMessage("Stock change failed - " + outErr);
             }
-            
+
             return true;
         }
-        
+
         return false;
+    }
+
+    @Override
+    public boolean isAuthorized(final CommandSender sender) throws NotReadyException {
+        return sender.isOp() || plugin.hasPermission(sender, REQUIRED_PERMISSION);
     }
 }

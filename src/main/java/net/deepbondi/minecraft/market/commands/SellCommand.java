@@ -1,9 +1,11 @@
 package net.deepbondi.minecraft.market.commands;
 
-import com.iCo6.*;
-import com.iCo6.system.*;
-import java.util.Map;
-import net.deepbondi.minecraft.market.*;
+import com.iCo6.iConomy;
+import com.iCo6.system.Holdings;
+import net.deepbondi.minecraft.market.CommoditiesMarket;
+import net.deepbondi.minecraft.market.Commodity;
+import net.deepbondi.minecraft.market.NotReadyException;
+import net.deepbondi.minecraft.market.PriceModel;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -12,14 +14,18 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.Map;
+
 public class SellCommand implements CommandExecutor {
-    final CommoditiesMarket plugin;
-    public SellCommand(CommoditiesMarket plugin) {
+    private final CommoditiesMarket plugin;
+
+    public SellCommand(final CommoditiesMarket plugin) {
         this.plugin = plugin;
     }
-    
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        Player player;
+
+    @Override
+    public boolean onCommand(final CommandSender sender, final Command cmd, final String label, final String[] args) {
+        final Player player;
         if (sender instanceof Player) {
             player = (Player) sender;
         } else {
@@ -28,11 +34,11 @@ public class SellCommand implements CommandExecutor {
             // specified in the config.yml?
             return true;
         }
-        
+
         if (args.length > 0 && args.length <= 2) {
-            String itemName = args[0];
+            final String itemName = args[0];
             int qty = 1;
-            
+
             if (args.length > 1) {
                 try {
                     qty = Integer.parseInt(args[1]);
@@ -40,83 +46,80 @@ public class SellCommand implements CommandExecutor {
                     return false;
                 }
             }
-            
+
             if (qty <= 0) return false;
-            
-            Commodity item = plugin.lookupCommodity(itemName);
+
+            final Commodity item = plugin.lookupCommodity(itemName);
             if (item == null) {
                 sender.sendMessage("Can't find a commodity by that name.");
                 return true;
             }
-            
+
             try {
                 sellItems(sender, player, item, qty);
             } catch (NotReadyException e) {
                 e.explainThis(plugin, sender);
             }
-            
+
             return true;
         }
-        
+
         return false;
     }
-    
-    private void sellItems(CommandSender sender, Player player, Commodity item, int qty)
-    throws NotReadyException {
-        iConomy economy = plugin.getIConomy();
-        
+
+    private void sellItems(final CommandSender sender, final Player player, final Commodity item, final int qty)
+            throws NotReadyException {
         long qtyRemoved;
-        double amtPaid;
-        
-        synchronized(plugin) {
-            PriceModel model = plugin.getPriceModel();
-            double price = model.checkSellPrice(item, qty, plugin);
-            Holdings holdings = plugin.getAccount(player.getName()).getHoldings();
-            
-            Inventory inventory = player.getInventory();
-            ItemStack sellingItems = new ItemStack(
-                item.getItemId(),
-                (int)qty,
-                (short) 0,
-                item.getByteData());
-            Map<Integer, ItemStack> leftovers = inventory.removeItem(sellingItems);
-            
+        final double amtPaid;
+
+        synchronized (plugin) {
+            final PriceModel model = plugin.getPriceModel();
+            final Holdings holdings = plugin.getAccount(player.getName()).getHoldings();
+
+            final Inventory inventory = player.getInventory();
+            final ItemStack sellingItems = new ItemStack(
+                    item.getItemId(),
+                    qty,
+                    (short) 0,
+                    item.getByteData());
+            final Map<Integer, ItemStack> leftovers = inventory.removeItem(sellingItems);
+
             qtyRemoved = qty;
-            for (ItemStack leftover : leftovers.values()) {
+            for (final ItemStack leftover : leftovers.values()) {
                 qtyRemoved -= leftover.getAmount();
             }
             if (qtyRemoved == 0) {
                 sender.sendMessage(ChatColor.RED + "You don't have any of those to sell.");
                 return;
             }
-            
-            amtPaid = model.checkSellPrice(item, qtyRemoved, plugin);
-            
-            StringBuilder outErr = new StringBuilder();
+
+            amtPaid = model.checkSellPrice(item, qtyRemoved);
+
+            final StringBuilder outErr = new StringBuilder();
             if (plugin.adjustStock(item.getName(), qtyRemoved, outErr)) {
                 holdings.add(amtPaid);
             } else {
                 // TODO: remove items that were added to inventory
-                sender.sendMessage(ChatColor.RED + "Transaction failed: " + outErr.toString());
+                sender.sendMessage(ChatColor.RED + "Transaction failed: " + outErr);
             }
         } // end synchronized
-        
+
         plugin.recordPlayerCommodityStats(
-            player,
-            item,
-            (long) 0,
-            qtyRemoved,
-            0.0,
-            amtPaid);
-        
+                player,
+                item,
+                (long) 0,
+                qtyRemoved,
+                0.0,
+                amtPaid);
+
         if (qtyRemoved != qty) {
             sender.sendMessage(
-                "You didn't have that many.  You sold " + qtyRemoved + " for "
-                 + economy.format(amtPaid) + ".");
+                    "You didn't have that many.  You sold " + qtyRemoved + " for "
+                            + iConomy.format(amtPaid) + '.');
         } else {
             sender.sendMessage(
-                "" + qtyRemoved + " " + item.getName() + " sold for "
-                + economy.format(amtPaid) + ".");
+                    qtyRemoved + " " + item.getName() + " sold for "
+                            + iConomy.format(amtPaid) + '.');
         }
     }
 }
