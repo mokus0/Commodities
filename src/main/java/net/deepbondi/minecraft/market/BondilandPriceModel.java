@@ -16,8 +16,8 @@ public class BondilandPriceModel implements PriceModel {
     private static final int referenceStockLevel = 1000;
     private static final double maxPricePerItem = 30;
 
-    private static final double buyerTax = 0.05;
-    private static final double sellerTax = 0.05;
+    private static final double buyerTax = 0.01;
+    private static final double sellerTax = 0.01;
 
     // Compute the total value in the market for commodity with the given
     // stack size and stock level.
