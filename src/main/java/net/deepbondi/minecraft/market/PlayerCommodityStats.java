@@ -10,6 +10,25 @@ import javax.persistence.Table;
 @Entity
 @Table(name = "pc_stats")
 public class PlayerCommodityStats {
+    public PlayerCommodityStats() {
+    }
+
+    public PlayerCommodityStats(final String playerName, final int commodityId, final long numBought, final long numSold, final double moneySpent, final double moneyGained) {
+        this.playerName = playerName;
+        this.commodityId = commodityId;
+        this.numBought = numBought;
+        this.numSold = numSold;
+        this.moneySpent = moneySpent;
+        this.moneyGained = moneyGained;
+    }
+
+    public void update(final long numBought, final long numSold, final double moneySpent, final double moneyGained) {
+        this.numBought += numBought;
+        this.numSold += numSold;
+        this.moneySpent += moneySpent;
+        this.moneyGained += moneyGained;
+    }
+
     @Id
     private int id;
 

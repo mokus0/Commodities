@@ -34,7 +34,6 @@ import java.util.regex.Pattern;
 public class CommoditiesMarket extends JavaPlugin {
     private static final Pattern COLON_PATTERN = Pattern.compile(":");
 
-    private iConomy economy;
     private Accounts accounts;
     private PermissionHandler permissions;
     private final PriceModel model = new BondilandPriceModel();
@@ -74,7 +73,7 @@ public class CommoditiesMarket extends JavaPlugin {
         return list;
     }
 
-    public void loadConfig() {
+    private void loadConfig() {
         try {
             final Configuration config = getConfig();
             initialItemQty = config.getInt("itemdefaults.instock", initialItemQty);
@@ -120,12 +119,11 @@ public class CommoditiesMarket extends JavaPlugin {
         }
 
         private void discover(final Plugin plugin, final Object surrogate) {
-            if (plugin instanceof iConomy) discoverEconomy((iConomy) surrogate);
+            if (plugin instanceof iConomy) discoverEconomy();
             if (plugin instanceof Permissions) discoverPermissions((Permissions) surrogate);
         }
 
-        void discoverEconomy(final iConomy plugin) {
-            economy = plugin;
+        void discoverEconomy() {
             accounts = new Accounts();
         }
 
@@ -150,19 +148,15 @@ public class CommoditiesMarket extends JavaPlugin {
         return model;
     }
 
-    public iConomy getIConomy()
-            throws NotReadyException {
-        if (economy != null) return economy;
-        throw new NotReadyException("iConomy is not yet enabled");
-    }
-
     public Account getAccount(final String name)
             throws NotReadyException {
-        getIConomy();
+        if (accounts == null)
+            throw new NotReadyException("iConomy is not yet enabled");
+
         return accounts.get(name);
     }
 
-    public PermissionHandler getPermissions()
+    private PermissionHandler getPermissions()
             throws NotReadyException {
         if (permissions != null) return permissions;
         throw new NotReadyException("Permissions is not yet enabled");
@@ -173,9 +167,8 @@ public class CommoditiesMarket extends JavaPlugin {
         return !(sender instanceof Player) || getPermissions().has((Player) sender, "commodities." + action);
     }
 
-    public synchronized Commodity lookupCommodity(final Material material, final byte byteData) {
-        return getDatabase()
-                .find(Commodity.class)
+    private synchronized Commodity lookupCommodity(final Material material, final byte byteData) {
+        return getDatabase().find(Commodity.class)
                 .where().eq("itemId", material.getId())
                 .where().eq("byteData", byteData)
                 .findUnique();
@@ -289,6 +282,13 @@ public class CommoditiesMarket extends JavaPlugin {
         adjStkUpdateProps.add("inStock");
     }
 
+    private PlayerCommodityStats lookupPlayerCommodityStats(final String playerName, final int commodityId) {
+        return getDatabase().find(PlayerCommodityStats.class).where()
+                .ieq("playerName", playerName)
+                .eq("commodityId", commodityId)
+                .findUnique();
+    }
+
     public synchronized void recordPlayerCommodityStats(
             final Player player,
             final Commodity item,
@@ -301,29 +301,18 @@ public class CommoditiesMarket extends JavaPlugin {
         db.beginTransaction();
 
         try {
-            final PlayerCommodityStats existing = db
-                    .find(PlayerCommodityStats.class)
-                    .where()
-                    .ieq("playerName", player.getName())
-                    .eq("commodityId", item.getId())
-                    .findUnique();
+            final PlayerCommodityStats existing = lookupPlayerCommodityStats(player.getName(), item.getId());
 
-            if (existing == null) {
-                final PlayerCommodityStats stats = new PlayerCommodityStats();
-                stats.setPlayerName(player.getName());
-                stats.setCommodityId(item.getId());
-                stats.setNumBought(numBought);
-                stats.setNumSold(numSold);
-                stats.setMoneySpent(moneySpent);
-                stats.setMoneyGained(moneyGained);
-                db.save(stats);
-            } else {
-                existing.setNumBought(existing.getNumBought() + numBought);
-                existing.setNumSold(existing.getNumSold() + numSold);
-                existing.setMoneySpent(existing.getMoneySpent() + moneySpent);
-                existing.setMoneyGained(existing.getMoneyGained() + moneyGained);
+            if (existing != null) {
+                existing.update(numBought, numSold, moneySpent, moneyGained);
 
                 db.update(existing, pcsUpdateProps);
+            } else {
+                final PlayerCommodityStats stats = new PlayerCommodityStats(
+                        player.getName(), item.getId(),
+                        numBought, numSold, moneySpent, moneyGained);
+
+                db.save(stats);
             }
 
             db.commitTransaction();

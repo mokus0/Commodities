@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 public class AdminAddCommand extends AdminSubCommand {
     private static final String REQUIRED_PERMISSION = "admin.add";
 
-    public static final Pattern CAMEL_CASE_BOUNDARY = Pattern.compile(
+    private static final Pattern CAMEL_CASE_BOUNDARY = Pattern.compile(
             String.format("%s|%s|%s",
                     "(?<=[A-Z])(?=[A-Z][a-z])",
                     "(?<=[^A-Z])(?=[A-Z])",
