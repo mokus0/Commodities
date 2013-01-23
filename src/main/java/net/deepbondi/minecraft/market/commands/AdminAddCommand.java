@@ -2,13 +2,21 @@ package net.deepbondi.minecraft.market.commands;
 
 import net.deepbondi.minecraft.market.CommoditiesMarket;
 import net.deepbondi.minecraft.market.NotReadyException;
-import net.deepbondi.minecraft.market.Util;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 
+import java.util.regex.Pattern;
+
 public class AdminAddCommand extends AdminSubCommand {
     private static final String REQUIRED_PERMISSION = "admin.add";
+
+    public static final Pattern CAMEL_CASE_BOUNDARY = Pattern.compile(
+            String.format("%s|%s|%s",
+                    "(?<=[A-Z])(?=[A-Z][a-z])",
+                    "(?<=[^A-Z])(?=[A-Z])",
+                    "(?<=[A-Za-z])(?=[^A-Za-z])"
+            ));
 
     private final CommoditiesMarket plugin;
 
@@ -58,9 +66,15 @@ public class AdminAddCommand extends AdminSubCommand {
         return false;
     }
 
+    // shamelessly cribbed from http://stackoverflow.com/questions/2559759
+    // and modified to split the output instead of inserting spaces.
+    private static String[] splitCamelCase(final String s) {
+        return CAMEL_CASE_BOUNDARY.split(s);
+    }
+
     private static String mangleMaterialName(final String name) {
         // Apply a fairly liberal transformation to ALL_CAPS_UNDERSCORED
-        final String[] parts = Util.splitCamelCase(name);
+        final String[] parts = splitCamelCase(name);
         final StringBuilder mangled = new StringBuilder();
         for (final String part : parts) {
             if (mangled.length() > 0) {
