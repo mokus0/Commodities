@@ -1,7 +1,7 @@
 package net.deepbondi.minecraft.market.commands;
 
 import net.deepbondi.minecraft.market.CommoditiesMarket;
-import net.deepbondi.minecraft.market.NotReadyException;
+import net.deepbondi.minecraft.market.exceptions.NotReadyException;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -14,11 +14,7 @@ public class AdminCommand implements CommandExecutor {
     final Map<String, AdminSubCommand> subCommands;
     private final AdminSubCommand defaultSubCommand;
 
-    private final CommoditiesMarket plugin;
-
     public AdminCommand(final CommoditiesMarket plugin) {
-        this.plugin = plugin;
-
         subCommands = new HashMap<String, AdminSubCommand>();
         subCommands.put("help", new AdminHelpCommand(this));
         subCommands.put("add", new AdminAddCommand(plugin));
@@ -52,7 +48,7 @@ public class AdminCommand implements CommandExecutor {
         try {
             return dispatchSubCommand(sender, cmd, subCmd, subCmdName, subCmdArgs);
         } catch (NotReadyException e) {
-            e.explainThis(plugin, sender);
+            e.explainThis(sender);
             return true;
         }
     }

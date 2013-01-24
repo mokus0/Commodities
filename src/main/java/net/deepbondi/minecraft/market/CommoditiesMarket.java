@@ -10,7 +10,12 @@ import net.deepbondi.minecraft.market.commands.AdminCommand;
 import net.deepbondi.minecraft.market.commands.BuyCommand;
 import net.deepbondi.minecraft.market.commands.PriceCheckCommand;
 import net.deepbondi.minecraft.market.commands.SellCommand;
+import net.deepbondi.minecraft.market.exceptions.CommoditiesMarketException;
+import net.deepbondi.minecraft.market.exceptions.NoSuchCommodityException;
+import net.deepbondi.minecraft.market.exceptions.NotReadyException;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.Configuration;
 import org.bukkit.entity.Player;
@@ -19,6 +24,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.event.server.PluginEnableEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.EventExecutor;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
@@ -151,7 +157,7 @@ public class CommoditiesMarket extends JavaPlugin {
     public Account getAccount(final String name)
             throws NotReadyException {
         if (accounts == null)
-            throw new NotReadyException("iConomy is not yet enabled");
+            throw new NotReadyException(this, "iConomy is not yet enabled");
 
         return accounts.get(name);
     }
@@ -159,7 +165,7 @@ public class CommoditiesMarket extends JavaPlugin {
     private PermissionHandler getPermissions()
             throws NotReadyException {
         if (permissions != null) return permissions;
-        throw new NotReadyException("Permissions is not yet enabled");
+        throw new NotReadyException(this, "Permissions is not yet enabled");
     }
 
     public boolean hasPermission(final CommandSender sender, final String action)
@@ -167,61 +173,146 @@ public class CommoditiesMarket extends JavaPlugin {
         return !(sender instanceof Player) || getPermissions().has((Player) sender, "commodities." + action);
     }
 
-    private synchronized Commodity lookupCommodity(final Material material, final byte byteData) {
-        return getDatabase().find(Commodity.class)
-                .where().eq("itemId", material.getId())
+    private synchronized Commodity lookupCommodity(final Material material, final byte byteData) throws NoSuchCommodityException {
+        final Material fudgedMaterial = fudgeMaterial(material);
+
+        Commodity result = getDatabase().find(Commodity.class)
+                .where().eq("itemId", fudgedMaterial.getId())
                 .where().eq("byteData", byteData)
                 .findUnique();
+
+        if (result == null) {
+            // check without byteData, if it's unique accept it
+            try {
+                result = getDatabase().find(Commodity.class)
+                        .where().eq("itemId", fudgedMaterial.getId())
+                        .findUnique();
+            } catch (PersistenceException e) {
+                // ignore; it means the result wasn't unique
+            }
+        }
+
+        if (result == null) {
+            final String name = fudgedMaterial.name();
+            final String description = byteData == 0
+                    ? name
+                    : name + ':' + byteData;
+
+            throw new NoSuchCommodityException("Can't find commodity [" + ChatColor.WHITE + description + ChatColor.RED + ']');
+        }
+
+        return result;
     }
 
-    public synchronized Commodity lookupCommodity(final String name) {
+    private static Material fudgeMaterial(final Material original) {
+        // when picking items by looking at them, we don't always get what the user expects.
+        // for the cases we've run across or thought of, we fudge them here.
+
+        //noinspection EnumSwitchStatementWhichMissesCases
+        switch (original) {
+            case BED_BLOCK:
+                return Material.BED;
+            case LAVA:
+            case STATIONARY_LAVA:
+                return Material.LAVA_BUCKET;
+            case REDSTONE_LAMP_ON:
+                return Material.REDSTONE_LAMP_OFF;
+            case REDSTONE_TORCH_ON:
+                return Material.REDSTONE_TORCH_OFF;
+            case PISTON_EXTENSION:
+            case PISTON_MOVING_PIECE:
+                return Material.PISTON_BASE;
+            case SIGN_POST:
+            case WALL_SIGN:
+                return Material.SIGN;
+            case STATIONARY_WATER:
+            case WATER:
+                return Material.WATER_BUCKET;
+            default:
+                return original;
+        }
+    }
+
+    public Commodity lookupCommodity(final CommandSender sender, final String name) throws NoSuchCommodityException {
+        // Accept a few context-dependent commodity name strings in addition to those recognized without a CommandSender
+        if (sender instanceof Player) {
+            final Player player = (Player) sender;
+
+            if (name.toLowerCase().equals("this")) {
+                final ItemStack thisStack = player.getItemInHand();
+                if (thisStack != null && thisStack.getType() != Material.AIR) {
+                    return lookupCommodity(thisStack.getType(), thisStack.getData().getData());
+                } else {
+                    throw new NoSuchCommodityException("You don't appear to be holding anything");
+                }
+            } else if (name.toLowerCase().equals("that")) {
+                final Block thatBlock = player.getTargetBlock(null, 100);
+
+                if (thatBlock != null && thatBlock.getType() != Material.AIR) {
+                    return lookupCommodity(thatBlock.getType(), thatBlock.getData());
+                } else {
+                    throw new NoSuchCommodityException("You don't appear to be pointing at anything");
+                }
+            }
+        }
+
+        return lookupCommodity(name);
+    }
+
+    private synchronized Commodity lookupCommodity(final String name) throws NoSuchCommodityException {
         // Accept "names" in several forms:
         // Material:byte and associated forms like in ScrapBukkit's /give
         // Commodity name from database
-        Commodity commodity = getDatabase()
+        final Commodity commodity = getDatabase()
                 .find(Commodity.class)
                 .where().ieq("name", name)
                 .findUnique();
 
-        if (commodity == null) {
-            final String[] parts = COLON_PATTERN.split(name);
-            final Material material;
-            byte byteData = 0;
+        if (commodity != null) {
+            return commodity;
+        }
 
-            switch (parts.length) {
-                case 2:
-                    try {
-                        byteData = (byte) Integer.parseInt(parts[1]);
-                    } catch (NumberFormatException e) {
-                        break;
-                    }
+        final String[] parts = COLON_PATTERN.split(name);
+        final Material material;
+        byte byteData = 0;
 
-                    // fall through
-                    //noinspection fallthrough
-                case 1:
-                    material = Material.matchMaterial(parts[0]);
-
-                    if (material == null) break;
-
-                    commodity = lookupCommodity(material, byteData);
+        switch (parts.length) {
+            case 2:
+                try {
+                    byteData = (byte) Integer.parseInt(parts[1]);
+                } catch (NumberFormatException e) {
                     break;
-                default:
-                    break;
-            }
+                }
+
+                // fall through
+                //noinspection fallthrough
+            case 1:
+                material = Material.matchMaterial(parts[0]);
+
+                if (material == null) break;
+
+                return lookupCommodity(material, byteData);
+            default:
+                break;
         }
 
         return commodity;
-
     }
 
-    public synchronized boolean addCommodity(final String name, final Material material, final byte byteData, final StringBuilder outErr) {
+    public synchronized void addCommodity(final String name, final Material material, final byte byteData) throws CommoditiesMarketException {
         final EbeanServer db = getDatabase();
         db.beginTransaction();
         try {
             // Check if commodity already exists
-            if (lookupCommodity(name) != null) {
-                outErr.append("Commodity already exists.");
-                return false;
+            boolean exists = true;
+            try {
+                lookupCommodity(name);
+            } catch (NoSuchCommodityException e) {
+                exists = false;
+            }
+
+            if (exists) {
+                throw new CommoditiesMarketException("Commodity already exists.");
             } else {
                 final Commodity item = new Commodity();
 
@@ -234,35 +325,25 @@ public class CommoditiesMarket extends JavaPlugin {
             }
 
             db.commitTransaction();
-
-            return true;
         } finally {
             db.endTransaction();
         }
     }
 
-    public synchronized boolean adjustStock(final String name, final long stockChange, final StringBuilder outErr) {
+    public synchronized void adjustStock(final String name, final long stockChange) throws CommoditiesMarketException {
         final EbeanServer db = getDatabase();
         db.beginTransaction();
         try {
             final Commodity item = lookupCommodity(name);
-            if (item == null) {
-                outErr.append("No commodity by that name was found.");
-                return false;
-            } else {
-                final long stock = item.getInStock() + stockChange;
-                if (stock < 0) {
-                    outErr.append("Stock level cannot be reduced past zero.");
-                    return false;
-                }
-
-                item.setInStock(stock);
-                db.update(item, adjStkUpdateProps);
+            final long stock = item.getInStock() + stockChange;
+            if (stock < 0) {
+                throw new CommoditiesMarketException("Stock level cannot be reduced past zero.");
             }
 
-            db.commitTransaction();
+            item.setInStock(stock);
+            db.update(item, adjStkUpdateProps);
 
-            return true;
+            db.commitTransaction();
         } finally {
             db.endTransaction();
         }

@@ -4,8 +4,10 @@ import com.iCo6.iConomy;
 import com.iCo6.system.Holdings;
 import net.deepbondi.minecraft.market.CommoditiesMarket;
 import net.deepbondi.minecraft.market.Commodity;
-import net.deepbondi.minecraft.market.NotReadyException;
 import net.deepbondi.minecraft.market.PriceModel;
+import net.deepbondi.minecraft.market.exceptions.CommoditiesMarketException;
+import net.deepbondi.minecraft.market.exceptions.NoSuchCommodityException;
+import net.deepbondi.minecraft.market.exceptions.NotReadyException;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -49,16 +51,18 @@ public class BuyCommand implements CommandExecutor {
 
             if (qty <= 0) return false;
 
-            final Commodity item = plugin.lookupCommodity(itemName);
-            if (item == null) {
-                sender.sendMessage("Can't find a commodity by that name.");
+            final Commodity item;
+            try {
+                item = plugin.lookupCommodity(sender, itemName);
+            } catch (NoSuchCommodityException e) {
+                e.explainThis(sender);
                 return true;
             }
 
             try {
                 buyItems(sender, player, item, qty);
             } catch (NotReadyException e) {
-                e.explainThis(plugin, sender);
+                e.explainThis(sender);
             }
             return true;
         }
@@ -116,14 +120,15 @@ public class BuyCommand implements CommandExecutor {
 
             amtCharged = model.checkBuyPrice(item, qtyDelivered);
 
-            // 2. Update market stock to reflect the items transferred
-            final StringBuilder outErr = new StringBuilder();
-            if (plugin.adjustStock(item.getName(), -qtyDelivered, outErr)) {
+            try {
+                // 2. Update market stock to reflect the items transferred
+                plugin.adjustStock(item.getName(), -qtyDelivered);
+
                 // 3. Charge them for what they received
                 holdings.subtract(amtCharged);
-            } else {
+            } catch (CommoditiesMarketException e) {
                 // TODO: restore items that were taken from inventory
-                sender.sendMessage(ChatColor.RED + "Transaction failed: " + outErr);
+                e.explainThis(sender);
             }
         } // end synchronized
 

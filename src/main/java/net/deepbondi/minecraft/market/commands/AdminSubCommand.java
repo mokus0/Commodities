@@ -1,6 +1,6 @@
 package net.deepbondi.minecraft.market.commands;
 
-import net.deepbondi.minecraft.market.NotReadyException;
+import net.deepbondi.minecraft.market.exceptions.NotReadyException;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 

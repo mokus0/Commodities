@@ -1,7 +1,8 @@
 package net.deepbondi.minecraft.market.commands;
 
 import net.deepbondi.minecraft.market.CommoditiesMarket;
-import net.deepbondi.minecraft.market.NotReadyException;
+import net.deepbondi.minecraft.market.exceptions.CommoditiesMarketException;
+import net.deepbondi.minecraft.market.exceptions.NotReadyException;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 
@@ -35,11 +36,11 @@ public class AdminStockCommand extends AdminSubCommand {
                 return false;
             }
 
-            final StringBuilder outErr = new StringBuilder();
-            if (plugin.adjustStock(itemName, stockChange, outErr)) {
+            try {
+                plugin.adjustStock(itemName, stockChange);
                 sender.sendMessage("Stock successfully changed");
-            } else {
-                sender.sendMessage("Stock change failed - " + outErr);
+            } catch (CommoditiesMarketException e) {
+                e.explainThis(sender);
             }
 
             return true;

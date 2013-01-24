@@ -1,7 +1,8 @@
 package net.deepbondi.minecraft.market.commands;
 
 import net.deepbondi.minecraft.market.CommoditiesMarket;
-import net.deepbondi.minecraft.market.NotReadyException;
+import net.deepbondi.minecraft.market.exceptions.CommoditiesMarketException;
+import net.deepbondi.minecraft.market.exceptions.NotReadyException;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -53,11 +54,11 @@ public class AdminAddCommand extends AdminSubCommand {
                 }
             }
 
-            final StringBuilder outErr = new StringBuilder();
-            if (plugin.addCommodity(itemName, itemMaterial, byteData, outErr)) {
+            try {
+                plugin.addCommodity(itemName, itemMaterial, byteData);
                 sender.sendMessage("Commodity added successfully.");
-            } else {
-                sender.sendMessage("Commodity could not be added.  " + outErr);
+            } catch (CommoditiesMarketException e) {
+                e.explainThis(sender);
             }
 
             return true;

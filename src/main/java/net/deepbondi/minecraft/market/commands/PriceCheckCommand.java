@@ -4,7 +4,7 @@ import com.iCo6.iConomy;
 import net.deepbondi.minecraft.market.CommoditiesMarket;
 import net.deepbondi.minecraft.market.Commodity;
 import net.deepbondi.minecraft.market.PriceModel;
-import org.bukkit.ChatColor;
+import net.deepbondi.minecraft.market.exceptions.NoSuchCommodityException;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -39,9 +39,11 @@ public class PriceCheckCommand implements CommandExecutor {
     }
 
     private void priceCheck(final CommandSender sender, final String itemName, final long qty) {
-        final Commodity item = plugin.lookupCommodity(itemName);
-        if (item == null) {
-            sender.sendMessage(ChatColor.RED + "Can't find commodity [" + ChatColor.WHITE + itemName + ChatColor.RED + ']');
+        final Commodity item;
+        try {
+            item = plugin.lookupCommodity(sender, itemName);
+        } catch (NoSuchCommodityException e) {
+            e.explainThis(sender);
             return;
         }
 
