@@ -292,11 +292,9 @@ public class CommoditiesMarket extends JavaPlugin {
                 if (material == null) break;
 
                 return lookupCommodity(material, byteData);
-            default:
-                break;
         }
 
-        return commodity;
+        throw new NoSuchCommodityException("Can't find commodity [" + ChatColor.WHITE + name + ChatColor.RED + ']');
     }
 
     public synchronized void addCommodity(final String name, final Material material, final byte byteData) throws CommoditiesMarketException {
