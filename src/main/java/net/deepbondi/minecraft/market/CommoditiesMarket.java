@@ -42,7 +42,7 @@ public class CommoditiesMarket extends JavaPlugin {
 
     private Accounts accounts;
     private PermissionHandler permissions;
-    private final PriceModel model = new BondilandPriceModel();
+    private final PriceModel model = new BondilandPriceModel(this);
     private int initialItemQty = 200;
 
     @Override
@@ -136,6 +136,19 @@ public class CommoditiesMarket extends JavaPlugin {
         void discoverPermissions(final Permissions plugin) {
             permissions = plugin.getHandler();
         }
+    }
+
+    public double estimateMarketVolume() throws NotReadyException {
+        if (accounts == null)
+            throw new NotReadyException(this, "iConomy is not yet enabled");
+
+        double sum = 0;
+
+        for (final Account acct : accounts.getTopAccounts(10)) {
+            sum += acct.getHoldings().getBalance();
+        }
+
+        return sum;
     }
 
     private void registerPluginListener() {

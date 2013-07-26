@@ -1,5 +1,6 @@
 package net.deepbondi.minecraft.market;
 
+import net.deepbondi.minecraft.market.exceptions.NotReadyException;
 import org.bukkit.Material;
 
 // A very simple model based on supply only.  The marginal cost of an item
@@ -12,28 +13,33 @@ import org.bukkit.Material;
 // the use of an integral in place of a summation in `marketValue`.  This
 // is an intentional compromise.
 public class BondilandPriceModel implements PriceModel {
-    private static final double basePricePerItem = 0.2;
-    private static final int referenceStockLevel = 1000;
-    private static final double maxPricePerItem = 30;
 
     private static final double buyerTax = 0.01;
     private static final double sellerTax = 0.01;
+    private final CommoditiesMarket plugin;
+
+    public BondilandPriceModel(final CommoditiesMarket plugin) {
+        this.plugin = plugin;
+    }
 
     // Compute the total value in the market for commodity with the given
     // stack size and stock level.
     // The proper computation would be the sum over the marginal value
     // function from stock levels 0 through qty-1.
     // This is an approximation (the integral of the same function from 0 to qty)
-    private static double marketValue(final long qty) {
-        final double p = basePricePerItem;
-        final double y0 = maxPricePerItem;
-        final double r = referenceStockLevel;
+    private static double marketValue(final long qty, double marketVolume) {
+        // fix items at the "cookie stock level" to 1
+        final double basePricePerItem = 1;
+        final double referenceStockLevel = marketVolume;
 
-        final double alpha = StrictMath.log(y0 / p) / StrictMath.log(r) - 1.0;
-        return y0 / (-alpha * StrictMath.pow((double) qty, alpha));
+        // and items that are almost gone cost a large portion of the money that exists
+        final double maxPricePerItem = 0.1 * marketVolume;
+
+        final double alpha = StrictMath.log(maxPricePerItem / basePricePerItem) / StrictMath.log(referenceStockLevel) - 1.0;
+        return maxPricePerItem / (-alpha * StrictMath.pow((double) qty, alpha));
     }
 
-    private static double basePrice(final Commodity item, final long qty) {
+    private double basePrice(final Commodity item, final long qty) {
         final Material itemMaterial = Material.getMaterial(item.getItemId());
 
         // Cookies are always 1.0
@@ -41,8 +47,15 @@ public class BondilandPriceModel implements PriceModel {
 
         final long stockLevel = item.getInStock();
 
-        return StrictMath.abs(marketValue(stockLevel)
-                - marketValue(stockLevel + qty));
+        double marketVolume;
+        try {
+            marketVolume = plugin.estimateMarketVolume();
+        } catch (NotReadyException e) {
+            marketVolume = 1e100;
+        }
+
+        return StrictMath.abs(marketValue(stockLevel, marketVolume)
+                - marketValue(stockLevel + qty, marketVolume));
     }
 
     @Override
